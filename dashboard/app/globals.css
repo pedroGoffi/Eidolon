@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #0b0e11;
+  color: #e6eaee;
+}
+
+* {
+  border-color: #232932;
+}
+
+::selection {
+  background: rgba(79, 209, 197, 0.25);
+}
+
+/* scrollbar discreta, combinando com o tema */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0e11;
+}
+::-webkit-scrollbar-thumb {
+  background: #232932;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2f3742;
+}
+
+/* foco visível sempre — acessibilidade não é opcional */
+:focus-visible {
+  outline: 2px solid #4fd1c5;
+  outline-offset: 2px;
+}

@@ -110,11 +110,11 @@ func main() {
 func loadInitialRoutes(engine *router.Engine) {
 	engine.Reload([]models.RoutingRule{
 		{
-			ID:                 "example-api",
-			Subdomain:          "app",
-			PathPattern:        "/api/*",
-			DestinationService: "api-service",
-			DestinationAddr:    "127.0.0.1:9001",
+			ID:                 "smart-work-force",
+			Subdomain:          "workon",
+			PathPattern:        "*",
+			DestinationService: "smartworkforce",
+			DestinationAddr:    "127.0.0.1:3001",
 			Priority:           10,
 			Enabled:            true,
 		},

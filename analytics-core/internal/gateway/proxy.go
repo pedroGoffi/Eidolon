@@ -30,7 +30,6 @@ func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.R
 	proxy.Transport = transport
 
 	proxy.Rewrite = func(req *httputil.ProxyRequest) {
-		// Mantém o comportamento padrão do NewSingleHostReverseProxy
 		req.SetXForwarded()
 		req.SetURL(target)
 
@@ -41,7 +40,7 @@ func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.R
 		if cid, ok := req.In.Context().Value(ctxKeyCorrelationID).(string); ok {
 			req.Out.Header.Set("X-Correlation-ID", cid)
 		}
-		// TODO produção: injetar token interno assinado
+		// TODO: injetar token interno assinado
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {

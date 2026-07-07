@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -17,7 +18,7 @@ import (
 // configurada no Transport abaixo em produção — aqui deixamos o ponto
 // de extensão marcado.
 func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.ReverseProxy {
-	target := &url.URL{Scheme: "http", Host: destAddr}
+	target := &url.URL{Scheme: "https", Host: destAddr}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
@@ -25,7 +26,10 @@ func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.R
 		DialContext: (&net.Dialer{
 			Timeout: upstreamTimeout,
 		}).DialContext,
+
 		ResponseHeaderTimeout: upstreamTimeout,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+
 	}
 	proxy.Transport = transport
 

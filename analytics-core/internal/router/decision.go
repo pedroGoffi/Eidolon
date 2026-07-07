@@ -114,12 +114,19 @@ func (e *Engine) Resolve(subdomain, path string) (models.RoutingRule, error) {
 }
 
 func matchPath(pattern, path string) bool {
-	if pattern == "*" || pattern == "" {
+	// Wildcard global
+	if pattern == "*" {
 		return true
 	}
+	// Wildcard de sufixo: /api/*
 	if strings.HasSuffix(pattern, "/*") {
 		prefix := strings.TrimSuffix(pattern, "/*")
 		return strings.HasPrefix(path, prefix)
+	}
+	// Wildcard de prefixo: *.js
+	if strings.HasPrefix(pattern, "*.") {
+		suffix := strings.TrimPrefix(pattern, "*.")
+		return strings.HasSuffix(path, suffix)
 	}
 	return pattern == path
 }

@@ -26,29 +26,28 @@ func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.R
 			Timeout: upstreamTimeout,
 		}).DialContext,
 		ResponseHeaderTimeout: upstreamTimeout,
-		// SEGUE REDIRECIONAMENTOS
-		DisableCompression: false,
+		DisableCompression:    false,
 	}
 	proxy.Transport = transport
 
-	// MODIFICA O DIRECTOR PARA SEGUIR REDIRECIONAMENTOS
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		req.Header.Set("X-Forwarded-Host", req.Host)
-		req.Header.Set("X-Forwarded-Proto", "https")
-	}
-
+	// USA SÓ REWRITE - REMOVE O DIRECTOR
 	proxy.Rewrite = func(req *httputil.ProxyRequest) {
-		req.SetXForwarded()
+		// Define o target
 		req.SetURL(target)
-		
-		// FORÇA O PROTOCOLO CORRETO
-		req.Out.Header.Set("X-Forwarded-Proto", "https")
+
+		// Headers de forward
 		req.Out.Header.Set("X-Forwarded-Host", req.In.Host)
-		
+		req.Out.Header.Set("X-Forwarded-Proto", "https")
+		req.Out.Header.Set("X-Forwarded-For", req.In.RemoteAddr)
+
+		// Remove headers maliciosos
 		req.Out.Header.Del("X-Forwarded-For")
 		req.Out.Header.Del("X-Real-IP")
+
+		// Correlation ID
+		if cid, ok := req.In.Context().Value(ctxKeyCorrelationID).(string); ok {
+			req.Out.Header.Set("X-Correlation-ID", cid)
+		}
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {

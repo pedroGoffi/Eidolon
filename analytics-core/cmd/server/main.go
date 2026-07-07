@@ -114,7 +114,7 @@ func loadInitialRoutes(engine *router.Engine) {
 			Subdomain:          "workon",
 			PathPattern:        "*",
 			DestinationService: "smartworkforce",
-			DestinationAddr:    "127.0.0.1:3001",
+			DestinationAddr:    "127.0.0.1:3000",
 			Priority:           10,
 			Enabled:            true,
 		},

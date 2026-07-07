@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -18,7 +17,7 @@ import (
 // configurada no Transport abaixo em produção — aqui deixamos o ponto
 // de extensão marcado.
 func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.ReverseProxy {
-	target := &url.URL{Scheme: "https", Host: destAddr}
+	target := &url.URL{Scheme: "http", Host: destAddr}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
@@ -26,28 +25,34 @@ func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.R
 		DialContext: (&net.Dialer{
 			Timeout: upstreamTimeout,
 		}).DialContext,
-
 		ResponseHeaderTimeout: upstreamTimeout,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-
+		// SEGUE REDIRECIONAMENTOS
+		DisableCompression: false,
 	}
 	proxy.Transport = transport
+
+	// MODIFICA O DIRECTOR PARA SEGUIR REDIRECIONAMENTOS
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Proto", "https")
+	}
 
 	proxy.Rewrite = func(req *httputil.ProxyRequest) {
 		req.SetXForwarded()
 		req.SetURL(target)
-
-		// Nunca confiar em headers vindos do cliente externo
+		
+		// FORÇA O PROTOCOLO CORRETO
+		req.Out.Header.Set("X-Forwarded-Proto", "https")
+		req.Out.Header.Set("X-Forwarded-Host", req.In.Host)
+		
 		req.Out.Header.Del("X-Forwarded-For")
 		req.Out.Header.Del("X-Real-IP")
-
-		if cid, ok := req.In.Context().Value(ctxKeyCorrelationID).(string); ok {
-			req.Out.Header.Set("X-Correlation-ID", cid)
-		}
-		// TODO: injetar token interno assinado
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		println("❌ PROXY ERROR:", err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 	}
 

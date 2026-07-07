@@ -19,40 +19,32 @@ import (
 func newReverseProxy(destAddr string, upstreamTimeout time.Duration) *httputil.ReverseProxy {
 	target := &url.URL{Scheme: "http", Host: destAddr}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(req *httputil.ProxyRequest) {
+			// DEFINE O TARGET
+			req.Out.URL.Scheme = target.Scheme
+			req.Out.URL.Host = target.Host
+			req.Out.URL.Path = req.In.URL.Path
+			req.Out.URL.RawQuery = req.In.URL.RawQuery
 
-	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: upstreamTimeout,
-		}).DialContext,
-		ResponseHeaderTimeout: upstreamTimeout,
-		DisableCompression:    false,
-	}
-	proxy.Transport = transport
+			// HEADERS
+			req.Out.Header.Set("X-Forwarded-Host", req.In.Host)
+			req.Out.Header.Set("X-Forwarded-Proto", "https")
 
-	// USA SÓ REWRITE - REMOVE O DIRECTOR
-	proxy.Rewrite = func(req *httputil.ProxyRequest) {
-		// Define o target
-		req.SetURL(target)
-
-		// Headers de forward
-		req.Out.Header.Set("X-Forwarded-Host", req.In.Host)
-		req.Out.Header.Set("X-Forwarded-Proto", "https")
-		req.Out.Header.Set("X-Forwarded-For", req.In.RemoteAddr)
-
-		// Remove headers maliciosos
-		req.Out.Header.Del("X-Forwarded-For")
-		req.Out.Header.Del("X-Real-IP")
-
-		// Correlation ID
-		if cid, ok := req.In.Context().Value(ctxKeyCorrelationID).(string); ok {
-			req.Out.Header.Set("X-Correlation-ID", cid)
-		}
-	}
-
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		println("❌ PROXY ERROR:", err.Error())
-		w.WriteHeader(http.StatusBadGateway)
+			if cid, ok := req.In.Context().Value(ctxKeyCorrelationID).(string); ok {
+				req.Out.Header.Set("X-Correlation-ID", cid)
+			}
+		},
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: upstreamTimeout,
+			}).DialContext,
+			ResponseHeaderTimeout: upstreamTimeout,
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			println("❌ PROXY ERROR:", err.Error())
+			w.WriteHeader(http.StatusBadGateway)
+		},
 	}
 
 	return proxy
